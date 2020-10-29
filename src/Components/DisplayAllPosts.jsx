@@ -1,135 +1,107 @@
-import React, { useState, useRef } from "react";
-import axios from 'axios'
+import React, { Component } from 'react';
+import axios from 'axios';
 import CreateNewPost from "./CreateNewPost";
 import Post from "./Post";
 import ModifyPost from "./ModifyPost"
-const DisplayAllPosts = () => {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [allPosts, setAllPosts] = useState([]);
-  const [isCreateNewPost, setIsCreateNewPost] = useState(false);
-  const [isModifyPost, setIsModifyPost] = useState(false);
-  const [editPostId, setEditPostId] = useState("");
 
-  // Initialize useRef
-  const getTitle = useRef();
-  const getContent = useRef();
-
-  const savePostTitleToState = event => {
-    setTitle(event.target.value);
-  };
-  const savePostContentToState = event => {
-    setContent(event.target.value);
-  };
-  const toggleCreateNewPost = () => {
-    setIsCreateNewPost(!isCreateNewPost);
-  };
-  const toggleModifyPostComponent = () => {
-    setIsModifyPost(!isModifyPost)
-  }
-  const editPost = id => {
-    setEditPostId(id);
-    console.log(id)
-    toggleModifyPostComponent();
-  };
-  const deletePost = id => {
-    const modifiedPost = allPosts.filter(eachPost => {
-      return eachPost.id !== id;
-    });
-    setAllPosts(modifiedPost);
-  };
-  const updatePost = (event) => {
-    event.preventDefault();
-    const updatedPost = allPosts.map(eachPost => {
-      if (eachPost.id === editPostId) {
-        console.log([eachPost.id, editPostId] )
-        return {
-          ...eachPost,
-          title: title || eachPost.title,
-          content: content || eachPost.content
-        };
-      }
-      console.log(eachPost)
-      return eachPost;
-    });
-    setAllPosts(updatedPost);
-    toggleModifyPostComponent();
-  };
-  const savePost = event => {
-    event.preventDefault();
-    const id = Date.now();
-    setAllPosts([...allPosts, { title, content, id }]);
-    console.log(allPosts);
-    setTitle("");
-    setContent("");
-    getTitle.current.value = "";
-    getContent.current.value = "";
-    toggleCreateNewPost();
-  };
-  if (isCreateNewPost) {
-    return (
-      <>
-        <CreateNewPost
-          savePostTitleToState={savePostTitleToState}
-          savePostContentToState={savePostContentToState}
-          getTitle={getTitle}
-          getContent={getContent}
-          savePost={savePost}
-          deletePost={deletePost}
-        />
-      </>
-    );
-  }
-  else if (isModifyPost) {
-    const post = allPosts.find(post => {
-      return post.id === editPostId;
-    });
-    return (
-      <ModifyPost
-        title={post.title}
-        content={post.content}
-        updatePost={updatePost}
-        savePostTitleToState={savePostTitleToState}
-        savePostContentToState={savePostContentToState}
-      />
-    );
-  }
-  return (
-    <>
-      {!allPosts.length ? (
-        <section className="no-post">
-          <h1>No Post Found!</h1>
-          <h3>There is nothing to see here.</h3>
-          <br />
-      <br />
-          <section className="button-wrapper">
-      <button onClick={toggleCreateNewPost} className="button">Create New</button>
-      </section>
-        </section>
-      ) : (
-      <div><h1>All Posts</h1>
-        <section className="all-post">
-        {allPosts.map(eachPost => {
-          return (
-            <Post
-              id={eachPost.id}
-              key={eachPost.id}
-              title={eachPost.title}
-              content={eachPost.content}
-              editPost={editPost}
-              deletePost={deletePost}
-            />
-          );
-        })}
-      <section className="button-wrapper">
-      <button onClick={toggleCreateNewPost} className="button">Create New</button>
-      </section>
-        </section>
+class DisplayAllPosts extends Component {
+    constructor(props){
+        super(props)
+        this.state = {
+            posts: [],
+            editingPostId: null
+        }
+        this.addNewPost= this.addNewPost.bind(this)
+        this.removePost = this.removePost.bind(this)
+        this.editingPost = this.editingPost.bind(this)
+        this.editPost = this.editPost.bind(this)
+    }
+    
+    componentDidMount() {
+        axios.get('/api/v1/posts')
+        .then(response => {
+            console.log(response)
+ 
+            this.setState({
+                posts: Array.from(response.data)
         
-        </div>
-      )}
-      
-    </>
-  );
-};
+            })
+        })
+        .catch(error => console.log(error))
+    }
+
+    addNewPost(title, body) {
+        axios.post( '/api/v1/posts', { title, body} )
+        .then(response => {
+            console.log(response)
+            const posts = [ ...this.state.posts, response.data.data ]
+            this.setState({posts})
+        })
+        .catch(error => {
+            console.log(error)
+        })
+    }
+
+    removePost(id) {
+        axios.delete( '/api/v1/posts/' + id )
+        .then(response => {
+            const posts = this.state.posts.filter(
+                post => post.id !== id
+            )
+            this.setState({posts})
+        })
+        .catch(error => console.log(error))
+    }
+
+    editingPost(id) {
+        this.setState({
+            editingPostId: id
+        })
+    }
+
+    editPost(id, title, body) {
+        axios.put( '/api/v1/posts/' + id, { 
+           
+                title, 
+                body
+            
+        })
+        .then(response => {
+            console.log(response);
+            const posts = this.state.posts;
+            posts[id-1] = {id, title, body}
+            this.setState(() => ({
+                posts, 
+                editingPostId: null
+            }))
+        })
+        .catch(error => console.log(error));
+    }
+
+    render() {
+        return (
+            <div className="posts-container">
+                {this.state.posts.map( post => {
+                    console.log(post.id)
+                    if ( this.state.editingPostId === post.id ) {
+                        return (<ModifyPost 
+                                post={post} 
+                                key={post.id} 
+                                editPost={this.editPost} 
+                                />)
+                    } else {
+                        return (<Post 
+                                post={post} 
+                                key={post.id} 
+                                onRemovePost={this.removePost} 
+                                editingPost={this.editingPost} 
+                                />)
+                    }
+                })}
+                
+                <CreateNewPost onNewPost={this.addNewPost} />
+            </div>
+        )
+    }
+}
 export default DisplayAllPosts;

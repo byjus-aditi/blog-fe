@@ -1,32 +1,26 @@
-import React from "react";
-const CreateNewPost = props => {
-  return (
-    <>
-      <form onSubmit={props.savePost}>
-        <h1>Create New Post</h1>
-        <input
-          type="text"
-          onChange={props.savePostTitleToState}
-          placeholder="title"
-          size="39"
-          required
-          ref={props.getTitle}
-        ></input>
-        <br />
-        <br />
-        <textarea
-          onChange={props.savePostContentToState}
-          placeholder="contents"
-          rows="8"
-          cols="41"
-          required
-          ref={props.getContent}
-        ></textarea>
-        <br />
-        <br />
-        <button >Save Post</button>
-      </form>
-    </>
-  );
-};
+import React from 'react';
+
+const CreateNewPost = ({onNewPost = f => f}) => {
+    let title, body
+    const submit = e => {
+        e.preventDefault()
+        onNewPost(title.value, body.value)
+        title.value = ''
+        body.value = ''
+        title.focus()
+    }
+
+    return (
+        <form onSubmit={submit}>
+            <input  ref={input => title = input}
+                    type="text"
+                    placeholder="Title..." required />
+            <input  ref={input => body = input}
+                    type="text"
+                    placeholder="Body..." required />
+            <button>Add Post</button>
+        </form>
+    )
+}
+
 export default CreateNewPost;
